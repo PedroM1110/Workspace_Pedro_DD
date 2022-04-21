@@ -1,0 +1,14 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "main"]
+	url = https://github.com/PedroM1110/Reconfig_Package.git
+	fetch = +refs/heads/*:refs/remotes/main/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+[remote "origin"]
+	url = https://gitlab.estig.ipb.pt/a43608/dupla-diplomacao-pedro-mendes.git
+	fetch = +refs/heads/*:refs/remotes/origin/*

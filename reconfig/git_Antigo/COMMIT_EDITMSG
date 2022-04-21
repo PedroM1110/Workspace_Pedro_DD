@@ -1,0 +1,14 @@
+Retirada dos osbstáculos a cada início de rota, nome do usuário automático no comando TOP, número da simulação que está rodando atualmente em cada início. 
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# On branch main
+# Your branch is ahead of 'origin/main' by 25 commits.
+#   (use "git push" to publish your local commits)
+#
+# Changes to be committed:
+#	modified:   simulation.py
+#
+# Untracked files:
+#	__pycache__/
+#
