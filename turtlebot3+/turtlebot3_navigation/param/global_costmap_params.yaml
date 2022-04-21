@@ -1,0 +1,34 @@
+global_costmap:
+  global_frame: map
+  robot_base_frame: base_footprint
+
+  update_frequency: 5.0
+  publish_frequency: 5.0
+  transform_tolerance: 1.0
+  always_send_full_costmap: true
+  
+  
+
+  static_map: true
+  
+  map_type: costmap
+  
+  
+  plugins:
+  
+      - {name: static_map,
+       type: "costmap_2d::StaticLayer"}
+  
+      - {name: obstacles,
+        type: "costmap_2d::VoxelLayer"}
+  
+      - {name: simplelayer,
+        type: "simple_layer_namespace::SimpleLayer"}
+       
+      - {name: inflation_layer,
+        type: "costmap_2d::InflationLayer"}
+  publish_frequency: 10.0
+  
+  obstacles:
+    observation_sources: scan
+    scan: {sensor_frame: base_scan, data_type: LaserScan, topic: scan, marking: true, clearing: true}
