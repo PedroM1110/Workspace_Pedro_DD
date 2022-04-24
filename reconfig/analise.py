@@ -16,7 +16,7 @@ from datetime import datetime
 def analysis(tipo, n, DATA_HORA):
     processos = ["amcl","map_server","move_base","rosmaster"]
     rotas = ["Rota_AB", "Rota_BC", "Rota_CH", "Rota_HD", "Rota_DE", "Rota_EC", "Rota_CA"]
-    DATA_HORA = "2022-04-24-21.09.39"
+    #DATA_HORA = "2022-04-24-21.09.39"
     #tipo = 'full'
     z = 1.96 #95% de confiança
     
