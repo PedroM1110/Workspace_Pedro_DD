@@ -10,12 +10,13 @@ from math import sqrt
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from datetime import datetime
 
 
 def analysis(tipo, n, DATA_HORA):
     processos = ["amcl","map_server","move_base","rosmaster"]
     rotas = ["Rota_AB", "Rota_BC", "Rota_CH", "Rota_HD", "Rota_DE", "Rota_EC", "Rota_CA"]
-    #DATA_HORA = "2022-04-19-20:29:43"
+    DATA_HORA = "2022-04-24-21.09.39"
     #tipo = 'full'
     z = 1.96 #95% de confiança
     
@@ -39,7 +40,7 @@ def analysis(tipo, n, DATA_HORA):
             
             os.remove(path_processo+'/'+processo+'.txt')
             
-            
+    
     #Listas %CPU
     media_cpu_full = []
     std_cpu_full = []
@@ -56,6 +57,26 @@ def analysis(tipo, n, DATA_HORA):
     std_mem_default = []
     ic_mem_default = []
     
+    #Listas %time+
+    media_time_exec_full = []
+    std_time_exec_full = []
+    ic_time_exec_full = []
+    media_time_exec_default = []
+    std_time_exec_default = []
+    ic_time_exec_default = []
+    segundos_full = []
+    minutos_full = []
+    min_to_sec_full = []
+    total_sec_full = []
+    d_full = []
+    time_exec_full = []
+    segundos_default = []
+    minutos_default = []
+    min_to_sec_default = []
+    total_sec_default = []
+    d_default = []
+    time_exec_default = []
+    
     n = 1
     for rota in rotas:
         for processo in processos:
@@ -63,29 +84,75 @@ def analysis(tipo, n, DATA_HORA):
         
             path_processo = os.path.expanduser('~')+'/Análise_Simulações/'+ DATA_HORA +"/"+rota+"/"+processo    
             file_full = pd.read_csv(path_processo+'/'+processo+'_'+'full''.csv', 
-                            names = ['Pid', 'Usuário', 'X', 'XX', 'XXX', 'XXXX', 'XXXXX', 'xxx', '%CPU', '%MEM', 'xxXX', 'Processo'])
+                            names = ['Pid', 'Usuário', 'X', 'XX', 'XXX', 'XXXX', 'XXXXX', 'xxx', '%CPU', '%MEM', 'Time_Exec', 'Processo'])
             file_default = pd.read_csv(path_processo+'/'+processo+'_'+'default''.csv', 
-                            names = ['Pid', 'Usuário', 'X', 'XX', 'XXX', 'XXXX', 'XXXXX', 'xxx', '%CPU', '%MEM', 'xxXX', 'Processo'])
+                            names = ['Pid', 'Usuário', 'X', 'XX', 'XXX', 'XXXX', 'XXXXX', 'xxx', '%CPU', '%MEM', 'Time_Exec', 'Processo'])
    
+            segundos_full = []
+            minutos_full = []
+            min_to_sec_full = []
+            total_sec_full = []
+            d_full = []
+            segundos_default = []
+            minutos_default = []
+            min_to_sec_default = []
+            total_sec_default = []
+            d_default = []
+        
+            for item in file_full['Time_Exec']:
+                    d_full.append(datetime.strptime(item, "%M:%S.%f"))
+            
+            for item in d_full:
+                    segundos_full.append(item.second)
+                    minutos_full.append(item.minute)
+            
+            for item in minutos_full:
+                    min_to_sec_full.append(item*60)
+            
+            for idx,item in enumerate(segundos_full):
+                    total_sec_full.append(item+min_to_sec_full[idx])
+                    
+            for item in file_default['Time_Exec']:
+                    d_default.append(datetime.strptime(item, "%M:%S.%f"))
+            
+            for item in d_default:
+                    segundos_default.append(item.second)
+                    minutos_default.append(item.minute)
+            
+            for item in minutos_default:
+                    min_to_sec_default.append(item*60)
+            
+            for idx,item in enumerate(segundos_default):
+                    total_sec_default.append(item+min_to_sec_default[idx])
+            
+                    
+            time_exec_full.append(max(total_sec_full)-min(total_sec_full))
+            time_exec_default.append(max(total_sec_default)-min(total_sec_default))
+
+            #CPU FULL
             media_cpu_full.append(file_full['%CPU'].mean()) 
             std_cpu_full.append(file_full['%CPU'].std())
             ic = z * (file_full['%CPU'].std() / sqrt(len(file_full['%CPU'])))
             ic_cpu_full.append(ic)
             
+            #MEM FULL
             media_mem_full.append(file_full['%MEM'].mean())
             std_mem_full.append(file_full['%MEM'].std())
             ic = z * (file_full['%MEM'].std() / sqrt(len(file_full['%MEM'])))
             ic_mem_full.append(ic)
             
+            #CPU DEFAULT
             media_cpu_default.append(file_default['%CPU'].mean())
             std_cpu_default.append(file_default['%CPU'].std())
-            ic = z * (file_default['%CPU'].std() / sqrt(len(file_full['%CPU'])))
+            ic = z * (file_default['%CPU'].std() / sqrt(len(file_default['%CPU'])))
             ic_cpu_default.append(ic)
             
+            #MEM DEFAULT
             media_mem_default.append(file_default['%MEM'].mean())
             std_mem_default.append(file_default['%MEM'].std())
-            ic = z * (file_default['%MEM'].std() / sqrt(len(file_full['%MEM'])))
+            ic = z * (file_default['%MEM'].std() / sqrt(len(file_default['%MEM'])))
             ic_mem_default.append(ic)
+                        
             
         n += 1
  
@@ -153,12 +220,22 @@ def analysis(tipo, n, DATA_HORA):
                               ic_mem_full[aux_processo+2], 
                               ic_mem_full[aux_processo+3]]],
                       )
-        aux_processo += 4
+    
         plt.savefig(os.path.expanduser('~')+'/Análise_Simulações/'+ DATA_HORA +"/"+ rota + "/Grafico_"+rota+"_MEM.png") 
+        plt.close()
+        
+        
+        aux_processo += 4
+        plt.savefig(os.path.expanduser('~')+'/Análise_Simulações/'+ DATA_HORA +"/"+ rota + "/Grafico_"+rota+"_Time_Exec.png") 
         plt.close()
         graph_cpu.to_csv(os.path.expanduser('~')+'/Análise_Simulações/'+ DATA_HORA +"/"+ rota + '/Resumo_CPU.csv')
         graph_mem.to_csv(os.path.expanduser('~')+'/Análise_Simulações/'+ DATA_HORA +"/"+ rota + '/Resumo_MEM.csv')
+        
         n += 1
+    
+    
+    
+    
     
     
 ########TIME ANALYSIS########################################################
@@ -268,67 +345,56 @@ def analysis(tipo, n, DATA_HORA):
     plt.savefig(os.path.expanduser('~')+'/Análise_Simulações/'+ DATA_HORA +"/Times.png", bbox_inches = "tight", dpi = 800 )
     
     
+    ###############Análise das distâncias percorridas#############################
     
-'''def plot_both(DATA_HORA):
-
-    comandos = ["move_base","amcl","map_server","rosmaster"]
-    
-
-    for comando in comandos:
-        #########################################################################################################
-        top_file = open("/home/pedro/Análise_Simulações/"+comando+"_top_"+"full"+".txt",'r')
-        lista_full = []
-
-        for line in top_file: 
-            if line[49] == " ":
-                if line[50] == " ": string = line[51]+'.'+line[53]
-                else: string = line[50]+line[51]+'.'+line[53]
-            else:
-                string = line[49]+line[50]+line[51]+'.'+line[53]
-            lista_full.append(float(string))
-
-        top_file.close()
-
-        media_full = statistics.mean(lista_full)
-
-        lista2_full = [float(media_full)]*len(lista_full)
-        ######################################################################################################
-
-        ######################################################################################################
-        top_file = open("/home/pedro/Análise_Simulações/"+comando+"_top_"+"default"+".txt",'r')
-        lista = []
-
-        for line in top_file: 
-            if line[49] == " ":
-                if line[50] == " ": string = line[51]+'.'+line[53]
-                else: string = line[50]+line[51]+'.'+line[53]
-            else:
-                string = line[49]+line[50]+line[51]+'.'+line[53]
-            lista.append(float(string))
-
-        top_file.close()
-
-        media = statistics.mean(lista)
-
-        lista2 = [float(media)]*len(lista)
-        ######################################################################################################
-
-        w=5
-        fig1, grafico = plt.subplots()
-        grafico.hist(lista,color='blue',label='Default',bins=np.arange(min(lista_full), max(lista_full) + w, w))
-        grafico.hist(lista_full,color='red',label='Full',alpha=0.5,bins=np.arange(min(lista_full), max(lista_full) + w, w))
-        #grafico.axvline(x=(media_full + 0.17),color='r',ls='--' )
-        #grafico.axvline(x=(media_full - 0.17),color='g',ls='--' )
-        grafico.set_title(comando)
-        grafico.set_ylabel('Amostras')
-        grafico.set_xlabel('%CPU')
-        grafico.legend()
-
+    dist_file_full = pd.read_csv(os.path.expanduser('~')+'/Análise_Simulações/'+DATA_HORA+'/distance_check_full.txt',
+                           sep=";",names=["Rota AB","Rota BC","Rota CH", "Rota HD", "Rota DE", "Rota EC", "Rota CA"],
+                           )
         
+    dist_file_default = pd.read_csv(os.path.expanduser('~')+'/Análise_Simulações/'+DATA_HORA+'/distance_check_default.txt',
+                        sep=";",names=["Rota AB","Rota BC","Rota CH", "Rota HD", "Rota DE", "Rota EC", "Rota CA"],
+                        )
+    
+    
+    dist_media_full = []
+    dist_desvio_full = []
+    dist_ic_full = []
+    dist_media_default = []
+    dist_desvio_default = []
+    dist_ic_default = []
+    z = 1.96
+    
+    
+    for idx, item in enumerate(dist_file_full):
+            dist_media_full.append(round(dist_file_full[item].mean(),2))
+            dist_desvio_full.append(round(dist_file_full[item].std(),2))
+            n_amostras = len(dist_file_full[item])
+            ic = z * dist_desvio_full[idx] / sqrt(n_amostras)
+            dist_ic_full.append(round(ic,2))
+    
+    print(dist_media_full)
+    print(dist_ic_full)
+            
+    for idx, item in enumerate(dist_file_default):
+            dist_media_default.append(round(dist_file_default[item].mean(),2))
+            dist_desvio_default.append(round(dist_file_default[item].std(),2))
+            n_amostras = len(dist_file_default[item])
+            ic = z * dist_desvio_default[idx] / sqrt(n_amostras)
+            dist_ic_default.append(round(ic,2))
+    
+    graph_times = pd.DataFrame({'Medias_de_percurso': ['Rota AB', 'Rota BC', 'Rota CH', 'Rota HD', 'Rota DE', 'Rota EC', 'Rota CA'], 
+                            'Medias_full': dist_media_full, 
+                            'IC_full': dist_ic_full, 
+                            'Medias_default': dist_media_default, 
+                            'IC_default': dist_ic_default})
+    print(graph_times)
+    graph_times.plot.bar(x='Medias_de_percurso', 
+                            y=['Medias_full','Medias_default'], 
+                            rot=0, 
+                            yerr = [dist_ic_full, dist_ic_default],)
+    
+    plt.savefig(os.path.expanduser('~')+'/Análise_Simulações/'+ DATA_HORA +"/Distância_Percorrida.png", bbox_inches = "tight", dpi = 800 )
 
-        fig1.savefig('/home/pedro/Análise_Simulações/Gráficos/'+comando+"_both"+'.png', transparent=False, dpi=800, bbox_inches="tight")
-        '''
 
-
-#if __name__ == '__main__':
-    #analysis(0,0,0)
+if __name__ == '__main__':
+    analysis(0,0,0)

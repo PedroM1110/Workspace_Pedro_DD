@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 ###################BIBLIOTECAS######################################################
+from dis import disco
+from functools import total_ordering
 import os
 import getpass
 import sys
@@ -11,6 +13,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from multiprocessing import Process, Queue
 from random import choice
+from math import sqrt
+from turtle import distance
 import rospy
 from actionlib_msgs.msg import GoalStatusArray
 from gazebo_msgs.srv import SpawnModel
@@ -18,11 +22,102 @@ from gazebo_msgs.srv import DeleteModel
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
+from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64MultiArray
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionResult
 import actionlib
 import analise 
 import shutil
+import copy
+from queue import Empty
+
+
+def dist_check(q_dist, tipo):
+    
+    global lista_x
+    global lista_y
+    lista_x = []
+    lista_y = []
+    
+
+    def soma():
+           
+        global total_distance
+        global lista_x
+        global lista_y
+        
+        add_x = 0
+        add_y = 0
+        dist = 0
+        
+        
+        buffer_x = copy.deepcopy(lista_x)
+        buffer_y = copy.deepcopy(lista_y)
+        lista_x = []
+        lista_y = []
+        
+        
+        
+        for idx, item in enumerate(buffer_x):
+            try:
+                add_x = buffer_x[idx + 1] - item
+                add_y = buffer_y[idx + 1] - buffer_y[idx]
+                dist += sqrt((add_x*add_x)+(add_y*add_y))
+            except: pass
+            
+        return dist
+
+    def callback(data):
+        global lista_x
+        global lista_y
+        global cont
+        cont += 1
+        
+        lista_x.append(data.pose.pose.position.x)
+        lista_y.append(data.pose.pose.position.y)
+        cont = 0
+        pass
+
+    def goal_check():
+        global lista_x
+        global lista_y
+        contador = 0
+        simulations_ongoing = 1 
+        while simulations_ongoing:
+            
+            q_dist.get()
+            contador += 1
+            result = soma()
+            file = open(os.path.expanduser('~')+"/Análise_Simulações/"+DATA_HORA+"/distance_check_" + tipo +".txt", 'a')
+            if contador != 7: file.write(str(round(result,1))+";")
+            if contador == 7:
+                file.write(str(round(result,1)))
+                file.write("\n")
+                contador = 0
+                simulations_ongoing = 0 
+            file.close()
+            
+            
+
+    
+
+    if __name__ == '__main__':
+        global total_distance
+        global sub_dist
+        global cont
+        cont = 0
+        total_distance = 0
+        rospy.init_node("dist_check")
+        rospy.sleep(1)
+        sub_dist = rospy.Subscriber("odom", Odometry, callback)
+        goal_check()
+        
+
+    
+
+    
+
+
 
 ################PROCESSO DE SPAWN E GOALS ##########################################
 def spawn_and_goals(q,q2,type,n,DATA_HORA):
@@ -32,9 +127,7 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
         x: float
         y: float
         w: float 
-
-    
-
+  
     def spawn_objects(obj,rota,name):
         try:
             if (rota == rota_AB) or (rota == rota_BC):
@@ -208,6 +301,10 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
         f = Ponto(4.5,-2.5,0)
         g = Ponto(8,-2,0)
         h = Ponto(6.5,8,0)
+        
+        
+        
+        distance_process = Process(target=dist_check, args=(q,))
 
         rospy.init_node('spawn_node')
 
@@ -233,9 +330,12 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
         print('Passed TOP')
         client.send_goal(goal)
         start_time[1] = time.perf_counter()
+        
         q.get()
         finish_time[1] = time.perf_counter()
         os.killpg(os.getpgid(top.pid), signal.SIGTERM)
+        rospy.sleep(1)
+        
         clear_objects()
         sensors = Float64MultiArray(data=array)
         wsn.publish(sensors)
@@ -246,6 +346,7 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
                                     + type], shell=True,preexec_fn=os.setpgrp)
         client.send_goal(goal)
         start_time[2] = time.perf_counter()
+        
         rospy.sleep(0.5)
 
         if args.o != 1:
@@ -258,6 +359,9 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
         q.get()
         finish_time[2] = time.perf_counter()
         os.killpg(os.getpgid(top.pid), signal.SIGTERM)
+        rospy.sleep(1)
+        
+
         clear_objects()
         sensors = Float64MultiArray(data=array)
         wsn.publish(sensors)
@@ -268,6 +372,7 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
                                     + type], shell=True,preexec_fn=os.setpgrp)
         client.send_goal(goal)
         start_time[3] = time.perf_counter()
+        
 
         n_obstacles = 0
         while n_obstacles < args.o:
@@ -278,6 +383,9 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
         q.get()
         finish_time[3] = time.perf_counter()
         os.killpg(os.getpgid(top.pid), signal.SIGTERM)
+        rospy.sleep(0.2)
+        
+        
         clear_objects()
         sensors = Float64MultiArray(data=array)
         wsn.publish(sensors)
@@ -288,9 +396,13 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
                                     + type], shell=True,preexec_fn=os.setpgrp)
         client.send_goal(goal)
         start_time[4] = time.perf_counter()
+        
         q.get()
         finish_time[4] = time.perf_counter()
         os.killpg(os.getpgid(top.pid), signal.SIGTERM)
+        rospy.sleep(0.2)
+        
+        
         clear_objects()
         sensors = Float64MultiArray(data=array)
         wsn.publish(sensors)
@@ -301,9 +413,13 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
                                     + type], shell=True,preexec_fn=os.setpgrp)
         client.send_goal(goal)
         start_time[5] = time.perf_counter()
+        
         q.get()
         finish_time[5] = time.perf_counter()
         os.killpg(os.getpgid(top.pid), signal.SIGTERM)
+        rospy.sleep(0.2)
+        
+        
         clear_objects()
         sensors = Float64MultiArray(data=array)
         wsn.publish(sensors)
@@ -314,6 +430,7 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
                                     + type], shell=True,preexec_fn=os.setpgrp)
         client.send_goal(goal)
         start_time[6] = time.perf_counter()
+        
 
         n_obstacles = 0
         while n_obstacles < args.o:
@@ -324,6 +441,9 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
         q.get()
         finish_time[6] = time.perf_counter()
         os.killpg(os.getpgid(top.pid), signal.SIGTERM)
+        rospy.sleep(0.2)
+        
+        
         clear_objects()
         sensors = Float64MultiArray(data=array)
         wsn.publish(sensors)
@@ -334,6 +454,7 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
                                     + type], shell=True,preexec_fn=os.setpgrp)
         client.send_goal(goal)
         start_time[7] = time.perf_counter()
+        
 
         n_obstacles = 0
         while n_obstacles < args.o:
@@ -345,6 +466,9 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
         q.get()
         finish_time[7] = time.perf_counter()
         os.killpg(os.getpgid(top.pid), signal.SIGTERM)
+        rospy.sleep(0.2)
+        
+        
         clear_objects()
         sensors = Float64MultiArray(data=array)
         wsn.publish(sensors)
@@ -362,6 +486,7 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
             file.write(str(i)+": "+str(round(diff_time,1))+"\n")
 
         file.close()    
+        
         
 
         pass
@@ -382,6 +507,11 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
             global vetor2x
             global vetor2y
             global array
+            
+            global distancias
+            
+            distancias = []
+            
             
             ###############Pode ser lançado em sombras###########################
             if args.ss == "true":
@@ -408,7 +538,7 @@ def spawn_and_goals(q,q2,type,n,DATA_HORA):
         except rospy.ROSInterruptException: pass
 
 ###############PROCESSO PARA VERIFICAÇÃO DO FINAL DAS ROTAS#########################
-def check_goal_reached(q):
+def check_goal_reached(q,q_dist):
     global aux
     aux = 0
 
@@ -419,6 +549,7 @@ def check_goal_reached(q):
                 aux = aux + 1
                 if aux == 1: 
                     q.put([1])
+                    q_dist.put([1])
             else: 
                 aux = 0 
         except:
@@ -451,18 +582,24 @@ def sim_laucher(tipo,rviz,gazebo,n, DATA_HORA):
                                                         +' gazebo:='+str(gazebo)], shell=True, preexec_fn=os.setpgrp)                   
     q = Queue(maxsize=1)
     q2 = Queue(maxsize=1)
+    q_dist = Queue(maxsize=1)
     time.sleep(5)
-    check_process = Process(target=check_goal_reached, args=(q,))
+    check_process = Process(target=check_goal_reached, args=(q,q_dist))
     spawn_process = Process(target=spawn_and_goals, args=(q,q2,tipo,n,DATA_HORA))
+    distance_process = Process(target=dist_check, args=(q_dist,tipo,))
     spawn_process.start()
     check_process.start()
+    distance_process.start()
     print('Processes created')
     q2.get()
     os.killpg(os.getpgid(processo.pid), signal.SIGTERM)
     #os.killpg(os.getpgid(top.pid), signal.SIGTERM)
-    check_process.terminate()
+    
     time.sleep(10)
     spawn_process.terminate()
+    check_process.terminate()
+    distance_process.terminate()
+    
     print(f'FINISHED', n, ' ', tipo)
     time.sleep(10)
 
@@ -487,7 +624,7 @@ if __name__ == '__main__':
     except: pass
     
     n = 0
-    DATA_HORA = str(datetime.today().strftime('%Y-%m-%d-%H:%M:%S'))
+    DATA_HORA = str(datetime.today().strftime('%Y-%m-%d-%H.%M.%S'))
     path = os.path.expanduser('~')+"/Análise_Simulações/"+DATA_HORA
     os.mkdir(path)
     try: os.mkdir(path + '/Parâmetros_iniciais_TB3')
@@ -550,7 +687,7 @@ if __name__ == '__main__':
     param_file.write("\n-a realiza análise dos dados: "+str(args.a))
     param_file.close()
     
-    path_params = os.path.expanduser('~') + "/catkin_ws/src/turtlebot3/turtlebot3_navigation/param/"
+    path_params = os.path.expanduser('~') + "/catkin_ws/src/turtlebot3+/turtlebot3_navigation/param/"
     files = [path_params + 'base_local_planner_params.yaml',
                 path_params + 'costmap_common_params_burger.yaml',
                 path_params + 'dwa_local_planner_params_burger.yaml',
